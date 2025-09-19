@@ -7,7 +7,7 @@ class Translator:
         self.session = session
         self.tokenizer = tokenizer
 
-    def estimate_max_length(self, texts: list[str], multiplier: int = 2, min_len: int = 20, max_len: int = 200) -> int:
+    def estimate_max_length(self, texts: list[str], multiplier: int = 2, min_len: int = 50, max_len: int = 200) -> int:
         text = " ".join(texts).split()
         num_words = len(text)
         est_len = num_words * multiplier
