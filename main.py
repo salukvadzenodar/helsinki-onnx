@@ -44,6 +44,7 @@ def creation_progress(model_type: ModelTypes):
     if convert == "quantize":
         convert = "y"
 
+    onnx_path = ""
     if convert == "y":
         if model_type == ModelTypes.HELSINKI:
             onnx_path = convert_helsinki_to_onnx(pt_name, quantize)
