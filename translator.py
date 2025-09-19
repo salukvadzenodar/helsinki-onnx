@@ -1,6 +1,7 @@
 import os
 from abc import ABC, abstractmethod
 import onnxruntime as ort
+from optimum.onnxruntime import ORTModelForSeq2SeqLM
 from transformers import MarianTokenizer, MBart50TokenizerFast
 import numpy as np
 
@@ -74,84 +75,39 @@ def load_helsinki_onnx_translator(model_path: str, hf_model_name: str) -> Transl
 
 
 class MBartTranslator(Translator):
-    def __init__(self, model_path: str, src_lang: str = "en_XX", target_lang: str = "en_XX", top_k: int = 5):
+    def __init__(self, model_path: str, src_lang: str = "en_XX", tgt_lang: str = "fr_XX"):
         self.model_path = model_path
         self.src_lang = src_lang
-        self.target_lang = target_lang
-        self.top_k = top_k
+        self.tgt_lang = tgt_lang
 
-        # Load tokenizer
+        # Tokenizer
         self.tokenizer = MBart50TokenizerFast.from_pretrained(model_path)
-        self.tokenizer.src_lang = self.src_lang
+        self.tokenizer.src_lang = src_lang
+        self.forced_bos_token_id = self.tokenizer.lang_code_to_id[tgt_lang]
 
-        # Forced BOS token = target language
-        self.forced_bos_id = self.tokenizer.lang_code_to_id[self.target_lang]
+        # ONNX model
+        self.model = ORTModelForSeq2SeqLM.from_pretrained(model_path)
 
-        # Load ONNX encoder + decoder (no past)
-        self.encoder_sess = ort.InferenceSession(
-            os.path.join(model_path, "encoder_model.onnx"),
-            providers=["CPUExecutionProvider"]
-        )
-        self.decoder_sess = ort.InferenceSession(
-            os.path.join(model_path, "decoder_model.onnx"),
-            providers=["CPUExecutionProvider"]
-        )
-
-    def _sample_next_token(self, logits: np.ndarray, generated_ids: list[int]) -> int:
-        """
-        Sample next token from top-k logits with repetition penalty
-        """
-        logits_copy = logits.copy()
-        for token_id in set(generated_ids):
-            logits_copy[token_id] /= 1.2  # repetition penalty
-
-        top_k = min(self.top_k, logits_copy.size)
-        top_ids = np.argpartition(-logits_copy, top_k)[:top_k]
-        top_probs = logits_copy[top_ids]
-        top_probs = np.exp(top_probs - np.max(top_probs))
-        top_probs /= top_probs.sum()
-        return int(np.random.choice(top_ids, p=top_probs))
-
-    def translate(self, texts: list[str]) -> list[str]:
+    def translate(self, texts: list[str], max_length: int = 128) -> list[str]:
         results = []
 
         for text in texts:
-            # Encode input
-            inputs = self.tokenizer(text, return_tensors="np")
-            encoder_hidden_states = self.encoder_sess.run(
-                None,
-                {
-                    "input_ids": inputs["input_ids"],
-                    "attention_mask": inputs["attention_mask"]
-                }
-            )[0]
+            # Use PyTorch tensors
+            inputs = self.tokenizer(text, return_tensors="pt", padding=True, truncation=True)
 
-            # Start decoder with forced BOS token (target language)
-            decoder_input_ids = np.array([[self.forced_bos_id]], dtype=np.int64)
-            generated_ids = []
+            # Generate translation
+            translated_tokens = self.model.generate(
+                input_ids=inputs["input_ids"],
+                attention_mask=inputs["attention_mask"],
+                max_length=max_length,
+                forced_bos_token_id=self.forced_bos_token_id
+            )
 
-            for _ in range(128):  # max length
-                feed_dict = {
-                    "input_ids": decoder_input_ids,
-                    "encoder_hidden_states": encoder_hidden_states,
-                    "encoder_attention_mask": inputs["attention_mask"]
-                }
-
-                outputs = self.decoder_sess.run(None, feed_dict)
-                logits = outputs[0]
-
-                # Sample next token
-                next_token_id = self._sample_next_token(logits[0, -1, :], generated_ids)
-                if next_token_id == self.tokenizer.eos_token_id:
-                    break
-
-                generated_ids.append(next_token_id)
-                decoder_input_ids = np.hstack([decoder_input_ids, [[next_token_id]]])
-
-            results.append(self.tokenizer.decode(generated_ids, skip_special_tokens=True))
+            # Decode
+            translated_text = self.tokenizer.decode(translated_tokens[0], skip_special_tokens=True)
+            results.append(translated_text)
 
         return results
-    
 
 def load_mbrat_onnx_translator(model_path: str, src_lang: str, target_lang: str) -> Translator:
     return MBartTranslator(model_path, src_lang, target_lang)
