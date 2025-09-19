@@ -2,15 +2,14 @@ import os
 from huggingface_hub import HfApi, snapshot_download
 
 
-def list_helsinki_models(code: str = "") -> list[tuple[str, str]]:
+def list_helsinki_models(code: str = "", big = True) -> list[tuple[str, str]]:
     api = HfApi()
 
     # List all models with "Helsinki-NLP/opus-mt" in their repo_id
-    models = api.list_models(search="Helsinki-NLP/opus-mt")
+    models = api.list_models(search=f"Helsinki-NLP/opus-mt{"-big" if big else ""}")
     language_pairs = []
 
     for model in models:
-        # model.modelId is like 'Helsinki-NLP/opus-mt-en-ka'
         parts = model.modelId.split("opus-mt-")
 
         if len(parts) == 2:

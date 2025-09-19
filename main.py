@@ -4,8 +4,10 @@ from converter import convert_helsinki_to_onnx
 from translator import load_helsinki_onnx_translator
 
 def creation_progress():
-    language_code = input('filter language code or skip: ').strip()
-    availabel_models = list_helsinki_models(language_code if language_code != "skip" else "")
+    language_input = input('filter language code, type small for small models or skip: ').strip().split() 
+    language_code, *rest = language_input
+    small = True if rest and rest[0] == "small" else False
+    availabel_models = list_helsinki_models(language_code if language_code != "skip" else "", not small)
     
     if language_code != "skip":
          print("Available MarianMT language pairs:")
@@ -40,7 +42,7 @@ def usage_progress():
     
     language_code = file_name.replace(".onnx", "").replace("-qint8", "")
     availabel_models = list_helsinki_models(language_code)
-    if len(availabel_models) is not 1:
+    if len(availabel_models) != 1:
         print("language not available")
         return
     
