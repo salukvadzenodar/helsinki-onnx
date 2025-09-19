@@ -1,8 +1,9 @@
+import os
 from downloader import list_helsinki_models, download_helsinki_model
-from converter import convert_helsinki_to_tf
+from converter import convert_helsinki_to_onnx
+from translator import load_helsinki_onnx_translator
 
-
-def main():
+def creation_progress():
     language_code = input('filter language code or skip: ').strip()
     availabel_models = list_helsinki_models(language_code if language_code != "skip" else "")
     
@@ -20,16 +21,48 @@ def main():
         return
     print(F"chosen language: {language[0]}, {language[1]}")
 
-    dir_name = input("enter name to download: ")
-    if dir_name == "":
-        dir_name = language[0]
-    pt_name = download_helsinki_model(language[1], dir_name)
+    pt_name = download_helsinki_model(language[1], language[0])
     print("pt path =", pt_name)
 
-    convert = input("do you want to convert model? Options: tf, tflite, no: ").strip()
-    if convert in ("tf", "tflite"):
-        tf_path = convert_helsinki_to_tf(pt_name, convert == "tflite")
-        print("tf path =", tf_path)
+    convert = input("do you want to convert model? y, n: ").strip()
+    if convert == "y":
+        onnx_path = convert_helsinki_to_onnx(pt_name)
+        print("onnx path =", onnx_path)
+
+def usage_progress():
+    all_items = os.listdir("llm_models")
+    files = [f for f in all_items if os.path.isfile(os.path.join("llm_models", f))]
+    print(files)
+
+    file_name = input("Enter file name to test or quit: ").strip().lower()
+    if file_name in ("quit", "exit") or file_name not in files:
+        return
+    
+    language_code = file_name.replace(".onnx", "-qint8")
+    availabel_models = list_helsinki_models(language_code)
+    if len(availabel_models) is not 1:
+        print("language not available")
+        return
+    
+    translator = load_helsinki_onnx_translator(os.join("llm_models", file_name), availabel_models[0][1])
+    print("AI is ready to assist:\n\n")
+
+    while True:
+        text = input("Enter text to translate (or 'exit' to quit): ").strip()
+        if text.lower() == "exit":
+            break
+
+        translation = translator.translate([text])
+        print(f"Translated: {translation[0]}")
+
+
+def main():
+    progress_path = input("do you want to download model? y, n: ").strip()
+    if progress_path == "y":
+        creation_progress()
+    else:
+        usage_progress()
+
 
 if __name__ == "__main__":
     main()

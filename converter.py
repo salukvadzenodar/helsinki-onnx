@@ -1,64 +1,47 @@
 import os
-from transformers import TFAutoModelForSeq2SeqLM
-from optimum.exporters.tflite import TFLiteExporter
+import torch
+from transformers import MarianMTModel, MarianTokenizer
+from onnxruntime.quantization import quantize_dynamic, QuantType
 
 
-def convert_helsinki_to_tf(pt_model_path: str, light = False, sequence_length = 128) -> str:
+def convert_helsinki_to_onnx(pt_model_path: str, quantize = True) -> str:
     # Base name for saving
     base_dir = os.path.dirname(pt_model_path)
     base_name = os.path.basename(pt_model_path.rstrip("/\\"))
-    
-    if not light:
-        # Convert to TensorFlow
-        tf_model = TFAutoModelForSeq2SeqLM.from_pretrained(pt_model_path, from_pt=True)
+    onnx_file_name = os.path.join(base_dir, f"{base_name}.onnx")
 
-        # Save as TensorFlow SavedModel folder
-        tf_model_path = os.path.join(base_dir, base_name + "_tf")
-        os.makedirs(tf_model_path, exist_ok=True)
-        tf_model.save_pretrained(tf_model_path)
-        return tf_model_path
+    pt_model = MarianMTModel.from_pretrained(pt_model_path)
+    pt_tokenizer = MarianTokenizer.from_pretrained(pt_model_path)
 
-    # Convert to TFLite
-    tflite_path = os.path.join(base_dir, base_name + ".tflite")
-    os.makedirs(os.path.dirname(tflite_path), exist_ok=True)
+    # Example input
+    text = ["Hello world"]
+    batch = pt_tokenizer(text, return_tensors="pt")
 
-    TFLiteExporter.export(
-        model_name_or_path=pt_model_path,
-        output=tflite_path,
-        task="translation",
-        sequence_length=128
+    # Create decoder_input_ids
+    decoder_input_ids = torch.tensor([[pt_model.config.decoder_start_token_id]] * batch["input_ids"].shape[0])
+
+    # Before exporting, set use_cache=False
+    pt_model.config.use_cache = False
+
+    # Export to ONNX
+    torch.onnx.export(
+        pt_model,
+        (batch["input_ids"], batch["attention_mask"], decoder_input_ids),  # model inputs
+        onnx_file_name,                                # output file
+        input_names=["input_ids", "attention_mask", "decoder_input_ids"],  
+        output_names=["logits"],
+        dynamic_axes={
+            "input_ids": {0: "batch_size", 1: "seq_len"},
+            "attention_mask": {0: "batch_size", 1: "seq_len"},
+            "decoder_input_ids": {0: "batch_size", 1: "seq_len"},
+            "logits": {0: "batch_size", 1: "seq_len"},
+        },
+        opset_version=14
     )
 
-    return tflite_path
-    
-
-
-# import os
-# from optimum.exporters.tflite import TFLiteExporter
-# from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
-#from optimum.exporters.tasks import TasksManager
-
-# def convert_helsinki_to_tflite(model_name_or_path: str, output_dir: str, sequence_length: int = 128) -> str:
-
-#     # Create the output directory if it doesn't exist
-#     os.makedirs(output_dir, exist_ok=True)
-    
-#     # Define the full path for the output TFLite file
-#     tflite_path = os.path.join(output_dir, "model.tflite")
-
-#     # Initialize the TFLiteExporter
-#     exporter = TFLiteExporter.from_pretrained(
-#         model_name_or_path,
-#         task="text2text-generation"
-#     )
-
-#     # Perform the export directly to TFLite
-#     exporter.export(
-#         output_path=tflite_path,
-#         sequence_length=sequence_length,
-#         # You can add quantization here if desired.
-#         # quantization_config=TFLiteQuantizationConfig(mode="int8-dynamic")
-#     )
-
-#     print(f"✅ Conversion successful! TFLite model saved at: {tflite_path}")
-#     return tflite_path
+    if quantize:
+        quantized_file_name = os.path.join(base_dir, f"{base_name}-qint8.onnx")
+        quantize_dynamic(onnx_file_name,quantized_file_name,weight_type=QuantType.QInt8)
+        return quantized_file_name
+    else:
+        return onnx_file_name
