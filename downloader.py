@@ -6,11 +6,11 @@ def list_helsinki_models(code: str = "", big = True) -> list[tuple[str, str]]:
     api = HfApi()
 
     # List all models with "Helsinki-NLP/opus-mt" in their repo_id
-    models = api.list_models(search=f"Helsinki-NLP/opus-mt{"-big" if big else ""}")
+    models = api.list_models(search=f"Helsinki-NLP/opus-mt{"-tc-big" if big else ""}")
     language_pairs = []
 
     for model in models:
-        parts = model.modelId.split("opus-mt-")
+        parts = model.modelId.split(f"opus-mt-{"tc-big-" if big else ""}")
 
         if len(parts) == 2:
             lang_pair = parts[1]

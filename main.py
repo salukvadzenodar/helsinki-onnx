@@ -4,9 +4,13 @@ from converter import convert_helsinki_to_onnx
 from translator import load_helsinki_onnx_translator
 
 def creation_progress():
-    language_input = input('filter language code, type small for small models or skip: ').strip().split() 
-    language_code, *rest = language_input
-    small = True if rest and rest[0] == "small" else False
+    language_input = input('filter language code, type small for small models or skip: ').strip().split()
+    if language_input:
+        language_code = language_input[0]
+        small = True if len(language_input) > 1 and language_input[1] == "small" else False
+    else:
+        language_code = ""
+        small = False
     availabel_models = list_helsinki_models(language_code if language_code != "skip" else "", not small)
     
     if language_code != "skip":
@@ -15,6 +19,8 @@ def creation_progress():
             print(pair)
 
          print(f"\nTotal models: {len(availabel_models)}")
+    if len(availabel_models) == 0:
+        return
 
     language_code = input('enter language code to download: ').strip()
     language = next(filter(lambda x: language_code in x[0], availabel_models), None)
