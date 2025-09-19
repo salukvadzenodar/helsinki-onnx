@@ -39,15 +39,18 @@ def creation_progress(model_type: ModelTypes):
         pt_name = download_mgpt_georgian_model()
 
     print("pt path =", pt_name)
-    convert = input("do you want to convert model? y, n: ").strip()
+    convert = input("do you want to convert model? y, n, quantize: ").strip().lower()
+    quantize = True if convert == "quantize" else False
+    if convert == "quantize":
+        convert = "y"
 
     if convert == "y":
         if model_type == ModelTypes.HELSINKI:
-            onnx_path = convert_helsinki_to_onnx(pt_name)
+            onnx_path = convert_helsinki_to_onnx(pt_name, quantize)
         elif model_type == ModelTypes.MBART:
-            onnx_path = convert_mbart_to_onnx(pt_name)
+            onnx_path = convert_mbart_to_onnx(pt_name, quantize)
         elif model_type == ModelTypes.MGPT_GEORGIAN:
-            onnx_path = convert_mgpt_to_onnx(pt_name)
+            onnx_path = convert_mgpt_to_onnx(pt_name, quantize)
 
     print("onnx path =", onnx_path)
 
