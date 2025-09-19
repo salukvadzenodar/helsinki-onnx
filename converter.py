@@ -66,6 +66,9 @@ def convert_mbart_to_onnx(pt_model_path: str, quantize = True) -> str:
     onnx_dir = os.path.join(base_dir, f"{base_name}_onnx")
 
     if(not quantize):
+        if os.path.exists(onnx_dir):
+            shutil.rmtree(onnx_dir)
+
         onnx_model = ORTModelForSeq2SeqLM.from_pretrained(pt_model_path, export=True)
         tokenizer = AutoTokenizer.from_pretrained(pt_model_path)
 
@@ -122,11 +125,16 @@ def convert_mgpt_to_onnx(pt_model_path: str, quantize=True) -> str:
     onnx_dir = os.path.join(base_dir, f"{base_name}_onnx")
 
     if(not quantize):
-        onnx_model = ORTModelForCausalLM.from_pretrained(pt_model_path, export=True)
+        if os.path.exists(onnx_dir):
+            shutil.rmtree(onnx_dir)
+        os.makedirs(onnx_dir, exist_ok=True)
+
+        onnx_model = ORTModelForCausalLM.from_pretrained(pt_model_path)
         tokenizer = AutoTokenizer.from_pretrained(pt_model_path)
 
         # Save the ONNX model and tokenizer to the new directory
-        onnx_model.save_pretrained(onnx_dir)
+        #onnx_model.save_pretrained(onnx_dir, export=True)
+        onnx_model.export(output=onnx_dir)
         tokenizer.save_pretrained(onnx_dir)
         return onnx_dir
 
