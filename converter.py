@@ -1,8 +1,8 @@
 import os
 from shutil import move
 import torch
-from transformers import MarianMTModel, MarianTokenizer, AutoTokenizer, AutoModelForSeq2SeqLM
-from optimum.onnxruntime import ORTModelForCausalLM
+from transformers import MarianMTModel, MarianTokenizer, AutoTokenizer
+from optimum.onnxruntime import ORTModelForCausalLM, ORTModelForSeq2SeqLM
 from onnxruntime.quantization import quantize_dynamic, QuantType
 
 
@@ -55,7 +55,7 @@ def convert_mbart_to_onnx(pt_model_path: str, quantize = True) -> str:
     base_name = os.path.basename(pt_model_path.rstrip("/\\"))
     onnx__dir = os.path.join(base_dir, f"{base_name}_onnx")
 
-    onnx_model = AutoModelForSeq2SeqLM.from_pretrained(pt_model_path, export=True)
+    onnx_model = ORTModelForSeq2SeqLM.from_pretrained(pt_model_path, export=True)
     tokenizer = AutoTokenizer.from_pretrained(pt_model_path)
 
     # Save the ONNX model and tokenizer to the new directory
@@ -63,32 +63,32 @@ def convert_mbart_to_onnx(pt_model_path: str, quantize = True) -> str:
     tokenizer.save_pretrained(onnx__dir)
 
     if quantize:
-        for f in ["encoder_model.onnx", "decoder_with_past_model.onnx"]:
+        for f in ["encoder_model.onnx", "decoder_model.onnx", "decoder_with_past_model.onnx"]:
             onnx_name = os.path.join(onnx__dir, f)
             quantized_name = os.path.join(onnx__dir, f"{f.replace(".onnx", "")}-qint8.onnx")
             quantize_dynamic(onnx_name, quantized_name, weight_type=QuantType.QInt8)
-    
-    os.remove(os.path.join(onnx__dir, "decoder_model.onnx"))
+
     return onnx__dir
 
+
 def convert_mgpt_to_onnx(pt_model_path: str, quantize=True) -> str:
+   # Base name for saving
     base_dir = os.path.dirname(pt_model_path)
     base_name = os.path.basename(pt_model_path.rstrip("/\\"))
-    onnx_file_name = os.path.join(base_dir, f"{base_name}.onnx")
+    onnx__dir = os.path.join(base_dir, f"{base_name}_onnx")
 
-    # Load PyTorch GPT model
-    # pt_model = GPT2LMHeadModel.from_pretrained(pt_model_path)
+    onnx_model = ORTModelForCausalLM.from_pretrained(pt_model_path, export=True)
+    tokenizer = AutoTokenizer.from_pretrained(pt_model_path)
 
-    # Export to ONNX folder
-    ORTModelForCausalLM.from_pretrained(pt_model_path, export=True, cache_dir=base_dir)
+    # Save the ONNX model and tokenizer to the new directory
+    onnx_model.save_pretrained(onnx__dir)
+    tokenizer.save_pretrained(onnx__dir)
 
-    # Rename
-    generated_file = os.path.join(base_dir, "model.onnx")
-    move(generated_file, onnx_file_name)
-
-    if quantize:
-        quantized_file_name = os.path.join(base_dir, f"{base_name}-qint8.onnx")
-        quantize_dynamic(onnx_file_name,quantized_file_name,weight_type=QuantType.QInt8)
-        return quantized_file_name
-    else:
-        return onnx_file_name
+    # if quantize:
+    #     for f in ["encoder_model.onnx", "decoder_with_past_model.onnx"]:
+    #         onnx_name = os.path.join(onnx__dir, f)
+    #         quantized_name = os.path.join(onnx__dir, f"{f.replace(".onnx", "")}-qint8.onnx")
+    #         quantize_dynamic(onnx_name, quantized_name, weight_type=QuantType.QInt8)
+    
+    # os.remove(os.path.join(onnx__dir, "decoder_model.onnx"))
+    return onnx__dir
