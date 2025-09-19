@@ -2,7 +2,7 @@ import os
 from models import ModelTypes
 from downloader import list_helsinki_models, download_helsinki_model, download_mbart50_mtm_model, download_mgpt_georgian_model
 from converter import convert_helsinki_to_onnx, convert_mbart_to_onnx, convert_mgpt_to_onnx
-from translator import load_helsinki_onnx_translator
+from translator import load_helsinki_onnx_translator, load_mbrat_onnx_translator
 
 def creation_progress(model_type: ModelTypes):
     if model_type == ModelTypes.HELSINKI:
@@ -74,6 +74,16 @@ def usage_progress(model_type: ModelTypes):
             print("language not available")
             return
         translator = load_helsinki_onnx_translator(os.path.join("llm_models", file_name), availabel_models[0][1])
+    elif model_type == ModelTypes.MBART:
+        src_lang = input("Choose source language! English: en_XX, German: de_DE, French: fr_XX, Russian: ru_RU, Spanish: es_XX, Georgian: ka_GE\n").strip()
+        if len(src_lang) == 0:
+            src_lang = "en_XX"
+
+        target_lang = input("Choose target language! English: en_XX, German: de_DE, French: fr_XX, Russian: ru_RU, Spanish: es_XX, Georgian: ka_GE\n").strip()
+        if len(target_lang) == 0:
+            target_lang = "en_XX"
+
+        translator = load_mbrat_onnx_translator(os.path.join("llm_models", "mbart50_mtm_onnx_qint8" if small else "mbart50_mtm_onnx"), src_lang, target_lang)
 
     print("AI is ready to assist:\n\n")
 
