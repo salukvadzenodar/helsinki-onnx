@@ -65,13 +65,13 @@ class HelsinkiTranslator(Translator):
 
         return translations
 
-def load_helsinki_onnx_translator(model_path: str, hf_model_name: str):
+def load_helsinki_onnx_translator(model_path: str, hf_model_name: str) -> Translator:
     tokenizer = MarianTokenizer.from_pretrained(hf_model_name)
     session = ort.InferenceSession(model_path)
 
     return HelsinkiTranslator(session, tokenizer)
 
-# def load_helsinki_onnx_translator(model_path: str, hf_model_name: str, quantize: bool = False):
+# def load_helsinki_onnx_translator(model_path: str, hf_model_name: str, quantize: bool = False) -> Translator:
 #     encoder_path = os.path.join(model_path, f"encoder_model{'-int8' if quantize else ''}.onnx")
 #     decoder_path = os.path.join(model_path, f"decoder_with_past_model{'-int8' if quantize else ''}.onnx")
 #     return HelsinkiTranslator(encoder_path, decoder_path, hf_model_name)
