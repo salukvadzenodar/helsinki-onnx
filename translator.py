@@ -1,8 +1,14 @@
+from abc import ABC, abstractmethod
 import onnxruntime as ort
 from transformers import MarianTokenizer
 import numpy as np
 
-class Translator:
+class Translator(ABC):
+    @abstractmethod
+    def translate(self, texts: list[str]) -> list[str]:
+        pass
+
+class HelsinkiTranslator(Translator):
     def __init__(self, session, tokenizer):
         self.session = session
         self.tokenizer = tokenizer
@@ -63,4 +69,9 @@ def load_helsinki_onnx_translator(model_path: str, hf_model_name: str):
     tokenizer = MarianTokenizer.from_pretrained(hf_model_name)
     session = ort.InferenceSession(model_path)
 
-    return Translator(session, tokenizer)
+    return HelsinkiTranslator(session, tokenizer)
+
+# def load_helsinki_onnx_translator(model_path: str, hf_model_name: str, quantize: bool = False):
+#     encoder_path = os.path.join(model_path, f"encoder_model{'-int8' if quantize else ''}.onnx")
+#     decoder_path = os.path.join(model_path, f"decoder_with_past_model{'-int8' if quantize else ''}.onnx")
+#     return HelsinkiTranslator(encoder_path, decoder_path, hf_model_name)

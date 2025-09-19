@@ -30,3 +30,24 @@ def download_helsinki_model(repo: str, model_dir: str, llm_dir = "llm_models"):
     
     snapshot_download(repo_id=repo, local_dir=dir_path)
     return os.path.abspath(dir_path)
+
+
+def download_mbart50_mtm_model(llm_dir = "llm_models"):
+    dir_path = os.path.join(llm_dir, "mbart50_mtm")
+    os.makedirs(llm_dir, exist_ok=True)
+
+    if os.path.exists(dir_path):
+        return os.path.abspath(dir_path)
+    
+    snapshot_download(repo_id="facebook/mbart-large-50-many-to-many-mmt", local_dir=dir_path)
+    return os.path.abspath(dir_path)
+
+def download_mgpt_georgian_model(llm_dir = "llm_models"):
+    dir_path = os.path.join(llm_dir, "mgpt_georgian")
+    os.makedirs(llm_dir, exist_ok=True)
+
+    if os.path.exists(dir_path):
+        return os.path.abspath(dir_path)
+    
+    snapshot_download(repo_id="ai-forever/mGPT-1.3B-georgian", local_dir=dir_path)
+    return os.path.abspath(dir_path)
