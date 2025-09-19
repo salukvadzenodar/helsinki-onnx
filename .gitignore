@@ -208,3 +208,4 @@ __marimo__/
 
 llm_models
 .python
+.DS_Store

@@ -1,7 +1,7 @@
 import os, glob, shutil
 import torch
 import onnx
-from transformers import MarianMTModel, MarianTokenizer, AutoTokenizer
+from transformers import MarianMTModel, MarianTokenizer, MBart50TokenizerFast, GPT2Tokenizer
 from optimum.onnxruntime import ORTModelForCausalLM, ORTModelForSeq2SeqLM
 from onnxruntime.quantization import quantize_dynamic, QuantType
 
@@ -70,7 +70,7 @@ def convert_mbart_to_onnx(pt_model_path: str, quantize = True) -> str:
             shutil.rmtree(onnx_dir)
 
         onnx_model = ORTModelForSeq2SeqLM.from_pretrained(pt_model_path, export=True)
-        tokenizer = AutoTokenizer.from_pretrained(pt_model_path)
+        tokenizer = MBart50TokenizerFast.from_pretrained(pt_model_path)
 
         # Save the ONNX model and tokenizer to the new directory
         onnx_model.save_pretrained(onnx_dir)
@@ -127,14 +127,13 @@ def convert_mgpt_to_onnx(pt_model_path: str, quantize=True) -> str:
     if(not quantize):
         if os.path.exists(onnx_dir):
             shutil.rmtree(onnx_dir)
-        os.makedirs(onnx_dir, exist_ok=True)
+        # os.makedirs(onnx_dir, exist_ok=True)
 
-        onnx_model = ORTModelForCausalLM.from_pretrained(pt_model_path)
-        tokenizer = AutoTokenizer.from_pretrained(pt_model_path)
+        onnx_model = ORTModelForCausalLM.from_pretrained(pt_model_path, export=True)
+        tokenizer = GPT2Tokenizer.from_pretrained(pt_model_path)
 
         # Save the ONNX model and tokenizer to the new directory
-        #onnx_model.save_pretrained(onnx_dir, export=True)
-        onnx_model.export(output=onnx_dir)
+        onnx_model.save_pretrained(onnx_dir, export=True)
         tokenizer.save_pretrained(onnx_dir)
         return onnx_dir
 
