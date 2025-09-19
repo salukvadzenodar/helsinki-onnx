@@ -38,17 +38,17 @@ def usage_progress():
     if file_name in ("quit", "exit") or file_name not in files:
         return
     
-    language_code = file_name.replace(".onnx", "-qint8")
+    language_code = file_name.replace(".onnx", "").replace("-qint8", "")
     availabel_models = list_helsinki_models(language_code)
     if len(availabel_models) is not 1:
         print("language not available")
         return
     
-    translator = load_helsinki_onnx_translator(os.join("llm_models", file_name), availabel_models[0][1])
+    translator = load_helsinki_onnx_translator(os.path.join("llm_models", file_name), availabel_models[0][1])
     print("AI is ready to assist:\n\n")
 
     while True:
-        text = input("Enter text to translate (or 'exit' to quit): ").strip()
+        text = input("Enter text to translate or exit: ").strip()
         if text.lower() == "exit":
             break
 
