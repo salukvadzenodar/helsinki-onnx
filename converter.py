@@ -94,12 +94,19 @@ def convert_mbart_to_onnx(pt_model_path: str, quantize = True) -> str:
             shutil.copy(source_path, destination_path)
             continue
 
-        combined_path = source_path.replace(".onnx", "_combined.onnx")
-        print(combined_path)
-        combine_onnx_external_data(source_path, combined_path)
+        file_combined = False
+        if os.path.exists(source_path.replace(".onnx", ".onnx_data")): # check if data file exists
+            combined_path = source_path.replace(".onnx", "_combined.onnx")
+            print(combined_path)
+            combine_onnx_external_data(source_path, combined_path)
+            file_combined = True
+        else:
+            combined_path = source_path
+
         print("start quantization")
         quantize_dynamic(combined_path, destination_path, weight_type=QuantType.QInt8)
-        os.remove(combined_path)
+        if file_combined:
+            os.remove(combined_path)
 
     for f in glob.glob(os.path.join(onnx_dir, "*.data")):
         if os.path.isfile(f):
